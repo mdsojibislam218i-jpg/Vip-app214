@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Aviator Demo</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0b0d12;color:#fff;font-family:Arial,sans-serif}
+.app{max-width:480px;margin:auto;min-height:100vh;background:#11151d;padding-bottom:25px}
+.header{height:62px;background:#171c26;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid #292f3b}
+.logo{font-size:24px;font-weight:800}.logo span{font-size:28px}
+.balance{background:#242b37;padding:9px 12px;border-radius:20px;font-weight:bold}
+.game{margin:12px;border-radius:12px;overflow:hidden;background:#080b10;border:1px solid #272e39}
+.sky{height:410px;position:relative;overflow:hidden;background:linear-gradient(#101a2a,#0a0d13)}
+.mult{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:55px;font-weight:900;color:#fff;text-shadow:0 2px 12px #000;z-index:4}
+.status{position:absolute;top:15px;left:15px;right:15px;display:flex;justify-content:space-between;z-index:5;color:#aeb7c6;font-size:13px}
+.grid{position:absolute;inset:0;opacity:.18;background-image:linear-gradient(#72809a 1px,transparent 1px),linear-gradient(90deg,#72809a 1px,transparent 1px);background-size:45px 45px;transform:skewY(-10deg) scale(1.4);transform-origin:bottom}
+.plane{position:absolute;left:12%;bottom:13%;font-size:48px;z-index:6;filter:drop-shadow(0 5px 8px #000)}
+.line{position:absolute;left:-20%;bottom:10%;width:150%;height:4px;background:#ff334f;transform:rotate(-16deg);transform-origin:left;box-shadow:0 0 15px #ff334f;z-index:3}
+.crashed .mult{color:#ff4961}.crashed .plane{animation:none}
+.panel{padding:0 12px}.box{background:#191f29;border-radius:12px;padding:12px;margin-bottom:10px}
+.row{display:flex;gap:8px}.field{flex:1}.field label{display:block;color:#9da7b6;font-size:12px;margin-bottom:6px}
+input{width:100%;background:#0e1218;border:1px solid #303846;color:#fff;padding:12px;border-radius:8px;font-size:16px}
+button{border:0;border-radius:9px;padding:12px;font-weight:800;font-size:15px;cursor:pointer}
+.bet{background:#2a303b;color:#fff;width:100%}.cash{background:#20b56b;color:#fff;width:100%;margin-top:8px}.cash:disabled{opacity:.35;cursor:not-allowed}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.small{background:#252c37;color:#dce2eb}
+.history{display:flex;gap:7px;overflow:hidden;margin-top:10px}.pill{padding:6px 9px;border-radius:15px;background:#26303c;font-size:12px;color:#7ed6a7}.pill.hot{color:#ffcf72}
+.note{font-size:11px;color:#7f8999;text-align:center;margin:12px}
+</style>
+
+<style>
+body{background:#080a0f}
+.app{max-width:520px;box-shadow:0 0 40px rgba(0,0,0,.45)}
+.screen{display:none}.screen.active{display:block}
+.nav{position:sticky;bottom:0;background:#151a23;border-top:1px solid #2a303b;display:grid;grid-template-columns:repeat(3,1fr);padding:7px 8px;z-index:50}
+.nav button{background:transparent;color:#8e98a8;padding:9px 4px;font-size:12px}.nav button.active{color:#fff;background:#222936}
+.card{margin:12px;background:#191f29;border:1px solid #2a303b;border-radius:14px;padding:16px}
+.hero{padding:18px 16px;background:linear-gradient(135deg,#191f29,#10151d)}
+.stat{display:flex;justify-content:space-between;margin:10px 0;color:#aeb7c6}.stat strong{color:#fff}
+.list{display:grid;gap:8px}.item{background:#11161e;padding:12px;border-radius:10px;display:flex;justify-content:space-between}
+</style>
+
+.nickname-box{margin-top:10px;background:#11161e;border:1px solid #2a303b;border-radius:10px;padding:12px}
+.nickname-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.nickname-title{font-size:18px;font-weight:900}
+.nickname-value{font-size:14px;color:#dce2eb;margin-top:4px}
+.nickname-edit{background:#252c37;color:#fff;padding:9px 12px}
+.nickname-form{display:none;margin-top:10px}.nickname-form.show{display:block}
+.nickname-msg{font-size:12px;color:#9da7b6;margin-top:8px;min-height:18px}
+
+
+<style>
+.saved-accounts{display:grid;gap:8px;margin-top:10px}
+.saved-account{background:#11161e;border:1px solid #2b3442;border-radius:10px;padding:10px;display:flex;align-items:center;gap:10px}
+.saved-account.selected{border-color:#20b56b;box-shadow:0 0 0 1px rgba(32,181,107,.18)}
+.saved-account-info{flex:1;min-width:0}
+.saved-account-title{font-weight:800;font-size:14px}
+.saved-account-meta{font-size:11px;color:#8f9aaa;margin-top:3px}
+.saved-account-actions{display:flex;gap:6px}
+.account-select{background:#252c37;color:#fff;border:0;border-radius:8px;padding:7px 9px;font-size:11px}
+.account-delete{background:#3a2028;color:#ff8a9a;border:0;border-radius:8px;padding:7px 9px;font-size:11px}
+.add-account-box{margin-top:10px;background:#11161e;border:1px dashed #394454;border-radius:10px;padding:11px}
+.add-account-title{font-weight:800;font-size:13px;margin-bottom:8px}
+.limit-note{font-size:11px;color:#7f8999;margin-top:7px}
+.withdraw-selected{background:#101a18;border:1px solid #28583f;border-radius:10px;padding:10px;margin-top:10px}
+</style>
+
+</head>
+<body>
+<div class="app">
+  <div id="homeScreen" class="screen active">
+    <div class="card hero">
+      <div style="font-size:13px;color:#9da7b6">AVIATOR</div>
+      <div style="font-size:28px;font-weight:900;margin:5px 0">Games</div>
+      <div style="color:#aeb7c6">Choose a game to start</div>
+    </div>
+    <div class="card">
+      <div style="font-size:18px;font-weight:900;margin-bottom:10px">✈️ Aviator</div>
+      <div style="color:#9da7b6;font-size:13px;margin-bottom:12px">Virtual crash-game demo</div>
+      <button class="cash" onclick="showScreen('gameScreen')">OPEN GAME</button>
+    </div>
+  </div>
+<div id="gameScreen" class="screen">
+<div class="header">
+    <div class="logo"><span>✈️</span> Aviator</div>
+    <div class="balance">💰 ৳ <span id="balance">10,000</span></div>
+  </div>
+
+  <div class="game">
+    <div class="sky" id="sky">
+      <div class="status"><span id="round">ROUND #001</span><span id="state">FLYING</span></div>
+      <div id="countdown" style="display:none;position:absolute;inset:0;z-index:10;align-items:center;justify-content:center;background:rgba(5,7,10,.72);font-size:34px;font-weight:900;text-align:center">Next Round<br><span id="countNum" style="font-size:64px">10</span></div>
+      <div class="grid"></div>
+      <div class="line"></div>
+      <div class="plane" id="plane">✈️</div>
+      <div class="mult" id="mult">1.00×</div>
+    </div>
+    <div class="history" id="history"></div>
+  </div>
+<div class="panel">
+    <div class="box">
+      <div style="font-weight:800;margin-bottom:10px">দুইটি Bet Slot</div>
+      <div class="row">
+        <div class="field"><label>Bet 1 — Amount (Max ৳20,000)</label><input id="bet1" type="number" min="10" max="20000" value="100"></div>
+        <div class="field"><label>Bet 1 — Auto Cash Out</label><input id="auto1" type="number" min="1.01" max="100000" step="0.01" value="2.00"></div>
+      </div>
+      <button class="bet" id="betBtn1" onclick="placeBet(1)" style="margin-top:8px">BET 1</button>
+      <button class="cash" id="cashBtn1" onclick="cashOut(1)" disabled>CASH OUT 1</button>
+      <div style="height:12px"></div>
+      <div class="row">
+        <div class="field"><label>Bet 2 — Amount (Max ৳20,000)</label><input id="bet2" type="number" min="10" max="20000" value="200"></div>
+        <div class="field"><label>Bet 2 — Auto Cash Out</label><input id="auto2" type="number" min="1.01" max="100000" step="0.01" value="3.00"></div>
+      </div>
+      <button class="bet" id="betBtn2" onclick="placeBet(2)" style="margin-top:8px">BET 2</button>
+      <button class="cash" id="cashBtn2" onclick="cashOut(2)" disabled>CASH OUT 2</button>
+    </div>
+  </div>
+  <div class="note">এটি শুধুমাত্র ভার্চুয়াল-কয়েন ডেমো। কোনো আসল টাকা/ডিপোজিট নেই।</div>
+  </div>
+<div id="profileScreen" class="screen">
+      <div class="card" id="profileDepositDemo" style="margin:12px 0">
+        <h3 style="margin:0 0 10px">📥 Deposit — Demo</h3>
+        <div class="stat"><span>Payment Method</span><strong>bKash / Nagad / Rocket</strong></div>
+        <div class="stat"><span>Amount</span><strong>৳100 – ৳20,000</strong></div>
+        <button class="cash" type="button" style="width:100%;margin-top:10px"
+          onclick="alert('Deposit — Demo: payment flow is simulated only.')">DEPOSIT</button>
+        <div style="font-size:12px;color:#9da7b6;text-align:center;margin-top:8px">
+          Demo only — no real-money transaction is processed.
+        </div>
+      </div>
+
+<div class="card">
+      <div class="stat"><span>Username</span><strong id="profileUsername">Username</strong></div>
+      <div class="stat"><span>Balance</span><strong>৳ <span id="profileBalance">10,000</span></strong></div>
+    </div>
+    <div class="card">
+      <div class="nickname-box">
+        <div class="nickname-head">
+          <div><div class="nickname-title">✨ Nickname</div>
+          <div class="nickname-value" id="profileNickname">Not set</div></div>
+          <button class="nickname-edit" type="button" onclick="toggleNicknameForm()">✏️ Edit</button>
+        </div>
+        <div id="nicknameForm" class="nickname-form">
+          <label style="display:block;color:#9da7b6;font-size:12px;margin-bottom:6px">Your Nickname</label>
+          <input id="nicknameInput" type="text" maxlength="30" placeholder="Enter your nickname">
+          <div class="row" style="margin-top:9px">
+            <button class="small" style="flex:1" type="button" onclick="toggleNicknameForm()">Cancel</button>
+            <button class="cash" style="flex:1;margin:0" type="button" onclick="saveNickname()">Save</button>
+          </div>
+          <div id="nicknameMsg" class="nickname-msg"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="font-size:18px;font-weight:900;margin-bottom:12px">💳 Deposit — Demo</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <button class="small" style="flex:1" onclick="selectMethod('bKash')">bKash</button>
+        <button class="small" style="flex:1" onclick="selectMethod('Nagad')">Nagad</button>
+        <button class="small" style="flex:1" onclick="selectMethod('Rocket')">Rocket</button>
+      </div>
+      <div id="depositMethod" style="font-size:12px;color:#9da7b6;margin-bottom:9px">Method: bKash</div>
+      <label style="display:block;color:#9da7b6;font-size:12px;margin-bottom:6px">Amount (৳100–৳20,000)</label>
+      <input id="depositAmount" type="number" min="100" max="20000" value="500" placeholder="Enter amount">
+      <div style="margin-top:10px;background:#11161e;border-radius:10px;padding:12px">
+        <div style="font-size:12px;color:#9da7b6">Demo payment number</div>
+        <div id="paymentNumber" style="font-size:18px;font-weight:900;margin-top:4px">01XXXXXXXXX</div>
+      </div>
+      <label style="display:block;color:#9da7b6;font-size:12px;margin:10px 0 6px">Transaction ID</label>
+      <input id="depositTx" type="text" placeholder="Enter demo transaction ID">
+      <button class="cash" style="margin-top:10px" onclick="submitDemoDeposit()">SUBMIT DEPOSIT</button>
+      <div id="depositMsg" style="font-size:12px;color:#9da7b6;margin-top:9px;min-height:18px"></div>
+    </div>
+    <div class="card">
+      <div style="font-size:18px;font-weight:900;margin-bottom:12px">📤 Withdraw — Demo</div>
+
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <button class="small" style="flex:1" onclick="selectWithdrawMethod('bKash')">bKash</button>
+        <button class="small" style="flex:1" onclick="selectWithdrawMethod('Nagad')">Nagad</button>
+        <button class="small" style="flex:1" onclick="selectWithdrawMethod('Rocket')">Rocket</button>
+      </div>
+      <div id="withdrawMethod" style="font-size:12px;color:#9da7b6;margin-bottom:9px">Method: bKash</div>
+
+      <div class="withdraw-selected">
+        <div style="font-size:11px;color:#7ed6a7">Selected withdrawal account</div>
+        <div id="selectedAccountText" style="font-size:14px;font-weight:800;margin-top:4px">No saved account selected</div>
+      </div>
+
+      <div style="margin-top:12px;font-size:14px;font-weight:800">Saved Accounts <span id="accountCount" style="color:#7ed6a7">(0/5)</span></div>
+      <div id="savedAccountsList" class="saved-accounts"></div>
+
+      <div class="add-account-box">
+        <div class="add-account-title">➕ Add bKash / Nagad / Rocket Number</div>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <button class="small" id="addMethodB" style="flex:1" onclick="setAddAccountMethod('bKash')">bKash</button>
+          <button class="small" id="addMethodN" style="flex:1" onclick="setAddAccountMethod('Nagad')">Nagad</button>
+          <button class="small" id="addMethodR" style="flex:1" onclick="setAddAccountMethod('Rocket')">Rocket</button>
+        </div>
+        <input id="newAccountNumber" type="tel" inputmode="numeric" maxlength="15" placeholder="Enter demo account number">
+        <input id="newAccountName" type="text" maxlength="30" placeholder="Account name (optional)" style="margin-top:8px">
+        <button class="cash" style="margin-top:9px" onclick="addWithdrawalAccount()">ADD ACCOUNT</button>
+        <div class="limit-note">সর্বোচ্চ ৫টি demo withdrawal account রাখা যাবে।</div>
+        <div id="accountMsg" style="font-size:12px;color:#9da7b6;margin-top:7px;min-height:18px"></div>
+      </div>
+
+      <label style="display:block;color:#9da7b6;font-size:12px;margin:12px 0 6px">Amount (৳200–৳50,000)</label>
+      <input id="withdrawAmount" type="number" min="200" max="50000" value="500" placeholder="Enter amount">
+
+      <label style="display:block;color:#9da7b6;font-size:12px;margin:10px 0 6px">Transaction Password</label>
+      <input id="withdrawPassword" type="password" placeholder="Enter transaction password">
+
+      <button class="bet" style="margin-top:10px" onclick="submitDemoWithdraw()">SUBMIT WITHDRAW</button>
+      <div id="withdrawMsg" style="font-size:12px;color:#9da7b6;margin-top:9px;min-height:18px"></div>
+      <div style="font-size:11px;color:#778190;margin-top:8px">Demo only: withdrawal requires the Transaction Password from Settings. Maximum 50 demo requests per rolling 24-hour period.</div>
+    </div>
+
+    <div class="card">
+      <div style="font-size:18px;font-weight:900;margin-bottom:10px">⚙️ Settings</div>
+      <button class="small" style="width:100%" onclick="openPasswordModal()">🔐 Transaction Password</button>
+      <div id="passwordStatus" style="font-size:12px;color:#9da7b6;margin-top:9px">Password not set</div><div style="font-size:11px;color:#778190;margin-top:7px">Withdraw requires this password. Password change uses the old password.</div>
+    </div>
+  </div>
+  <div id="passwordModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:100;align-items:center;justify-content:center;padding:18px">
+    <div class="card" style="width:min(440px,100%);margin:0">
+      <div style="font-size:20px;font-weight:900;margin-bottom:12px">🔐 Transaction Password</div>
+      <div style="font-size:12px;color:#9da7b6;margin-bottom:12px">ডেমো নিরাপত্তা ব্যবস্থা</div>
+      <div id="pwSetFields">
+        <label style="display:block;color:#9da7b6;font-size:12px;margin-bottom:6px">Current Password (change only)</label>
+        <input id="oldPw" type="password" placeholder="Old password">
+        <label style="display:block;color:#9da7b6;font-size:12px;margin:10px 0 6px">New Password</label>
+        <input id="newPw" type="password" placeholder="New password">
+        <label style="display:block;color:#9da7b6;font-size:12px;margin:10px 0 6px">Confirm New Password</label>
+        <input id="confirmPw" type="password" placeholder="Confirm password">
+      </div>
+      <div id="pwMsg" style="font-size:12px;margin-top:10px;min-height:18px"></div>
+      <div class="row" style="margin-top:12px">
+        <button class="small" style="flex:1" onclick="closePasswordModal()">Cancel</button>
+        <button class="cash" style="flex:1;margin:0" onclick="saveTransactionPassword()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="nav">
+    <button id="navHome" class="active" onclick="showScreen('homeScreen')">⌂<br>Home</button>
+    <button id="navGame" onclick="showScreen('gameScreen')">✈️<br>Game</button>
+    <button id="navProfile" onclick="showScreen('profileScreen')">👤<br>Profile</button>
+  </div>
+
+</div>
+
+<script>
+let balance=10000, multiplier=1, crashed=false, roundNo=1, start=0, crashAt=0;
+let bets={1:{active:false,amount:0},2:{active:false,amount:0}}, history=[];
+let countdownTimer=null;
+
+const multEl=document.getElementById('mult'), stateEl=document.getElementById('state');
+const plane=document.getElementById('plane'), sky=document.getElementById('sky');
+const countdown=document.getElementById('countdown'), countNum=document.getElementById('countNum');
+
+function randomCrash(){
+  // Demo-only random distribution:
+  // Most rounds are low, some are medium, and rare rounds are very high.
+  const r = Math.random();
+  if (r < 0.62) return +(1.05 + Math.random() * 1.95).toFixed(2);   // 1.05x–3x
+  if (r < 0.90) return +(3 + Math.random() * 7).toFixed(2);        // 3x–10x
+  if (r < 0.975) return +(10 + Math.random() * 40).toFixed(2);     // 10x–50x
+  if (r < 0.995) return +(50 + Math.random() * 450).toFixed(2);    // 50x–500x
+  return +(500 + Math.random() * 99500).toFixed(2);                // rare 500x–100,000x
+}
+function fmt(n){return Math.round(n).toLocaleString('en-US')}
+function updateBalance(){document.getElementById('balance').textContent=fmt(balance); syncAppBalance();}
+
+function placeBet(slot){
+  if(crashed||bets[slot].active)return;
+  const amount=Number(document.getElementById('bet'+slot).value);
+  if(!amount||amount<10||amount>20000){alert('প্রতি Bet-এর সর্বোচ্চ সীমা ৳20,000।');return}
+  if(amount>balance){alert('ভার্চুয়াল ব্যালেন্স যথেষ্ট নেই।');return}
+  balance-=amount;bets[slot]={active:true,amount};updateBalance();
+  document.getElementById('betBtn'+slot).textContent='BET ACTIVE';
+  document.getElementById('cashBtn'+slot).disabled=false;
+}
+function cashOut(slot){
+  if(!bets[slot].active||crashed)return;
+  balance+=bets[slot].amount*multiplier;
+  bets[slot]={active:false,amount:0};updateBalance();
+  document.getElementById('cashBtn'+slot).disabled=true;
+  document.getElementById('betBtn'+slot).textContent='BET SETTLED';
+}
+
+function render(t){
+  if(crashed)return;
+  const elapsed=(t-start)/1000;
+  multiplier=Math.min(100000,Math.exp(elapsed*.34));
+  if(multiplier>=crashAt){multiplier=crashAt;doCrash();return}
+
+  multEl.textContent=multiplier.toFixed(2)+'×';
+  plane.style.left=Math.min(82,12+elapsed*5.5)+'%';
+  plane.style.bottom=Math.min(78,13+elapsed*2.5)+'%';
+
+  [1,2].forEach(slot=>{
+    if(bets[slot].active){
+      const a=Number(document.getElementById('auto'+slot).value);
+      if(a>=1.01&&multiplier>=a)cashOut(slot);
+    }
+  });
+  requestAnimationFrame(render);
+}
+
+function doCrash(){
+  crashed=true;stateEl.textContent='CRASHED';sky.classList.add('crashed');
+  multEl.textContent=multiplier.toFixed(2)+'×';
+
+  // Make the plane visibly fall after crash
+  plane.style.transition='left .25s ease, bottom 1.15s cubic-bezier(.55,.05,.7,.2)';
+  plane.style.bottom='-15%';
+  plane.style.transform='rotate(35deg)';
+
+  history.unshift(multiplier);history=history.slice(0,8);
+  document.getElementById('history').innerHTML=history.map(x=>
+    `<div class="pill ${x>=10?'hot':''}">${x.toFixed(2)}×</div>`).join('');
+
+  [1,2].forEach(slot=>{
+    bets[slot]={active:false,amount:0};
+    document.getElementById('cashBtn'+slot).disabled=true;
+    document.getElementById('betBtn'+slot).textContent='NEXT ROUND';
+  });
+
+  setTimeout(startCountdown,1500);
+}
+
+function startCountdown(){
+  countdown.style.display='flex';
+  let n=10;countNum.textContent=n;stateEl.textContent='NEXT ROUND';
+  countdownTimer=setInterval(()=>{
+    n--;countNum.textContent=n;
+    if(n<=0){
+      clearInterval(countdownTimer);
+      countdown.style.display='none';
+      nextRound();
+    }
+  },1000);
+}
+
+function nextRound(){
+  roundNo++;
+  document.getElementById('round').textContent='ROUND #'+String(roundNo).padStart(3,'0');
+  stateEl.textContent='FLYING';
+  sky.classList.remove('crashed');
+  plane.style.transition='none';
+  plane.style.transform='none';
+  plane.style.left='12%';plane.style.bottom='13%';
+  multiplier=1;crashAt=randomCrash();start=performance.now();crashed=false;
+
+  [1,2].forEach(slot=>{
+    document.getElementById('betBtn'+slot).textContent='BET '+slot;
+  });
+  multEl.textContent='1.00×';
+  requestAnimationFrame(render);
+}
+
+// Start with a 10-second countdown
+updateBalance();
+startCountdown();
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));
+  const map={homeScreen:'navHome',gameScreen:'navGame',profileScreen:'navProfile'};
+  document.getElementById(map[id]).classList.add('active');
+  syncAppBalance();
+}
+function syncAppBalance(){
+  ['homeBalance','profileBalance'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.textContent=fmt(balance);
+  });
+  const h=document.getElementById('homeHistory');
+  if(h && history.length) h.innerHTML=history.slice(0,6).map(x=>`<div class="item"><span>Round</span><strong>${x.toFixed(2)}×</strong></div>`).join('');
+}
+
+</script>
+
+<script>
+let transactionPassword = localStorage.getItem('aviator_demo_tx_password') || '';
+function openPasswordModal(){
+  document.getElementById('passwordModal').style.display='flex';
+  document.getElementById('oldPw').value='';
+  document.getElementById('newPw').value='';
+  document.getElementById('confirmPw').value='';
+  document.getElementById('pwMsg').textContent='';
+}
+function closePasswordModal(){document.getElementById('passwordModal').style.display='none'}
+function saveTransactionPassword(){
+  const oldPw=document.getElementById('oldPw').value;
+  const newPw=document.getElementById('newPw').value;
+  const confirm=document.getElementById('confirmPw').value;
+  const msg=document.getElementById('pwMsg');
+  if(!newPw || newPw.length<6){msg.textContent='কমপক্ষে ৬ অক্ষরের password দিন।';return}
+  if(newPw!==confirm){msg.textContent='New password এবং confirm password মিলছে না।';return}
+  if(transactionPassword && oldPw!==transactionPassword){msg.textContent='পুরাতন password সঠিক নয়।';return}
+  transactionPassword=newPw;
+  localStorage.setItem('aviator_demo_tx_password',transactionPassword);
+  document.getElementById('passwordStatus').textContent='Password is set ✓';
+  msg.textContent='Password successfully updated.';
+  setTimeout(closePasswordModal,700);
+}
+function requireTransactionPassword(action){
+  if(!transactionPassword){openPasswordModal();return false}
+  const entered=prompt('Withdraw/transfer করার জন্য Transaction Password দিন:');
+  if(entered!==transactionPassword){alert('Transaction Password সঠিক নয়।');return false}
+  return true;
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  const s=document.getElementById('passwordStatus');
+  if(s&&transactionPassword)s.textContent='Password is set ✓';
+});
+</script>
+
+<script>
+let demoDepositMethod='bKash';
+function selectMethod(method){
+  demoDepositMethod=method;
+  const el=document.getElementById('depositMethod');
+  const num=document.getElementById('paymentNumber');
+  if(el) el.textContent='Method: '+method;
+  const numbers={
+    bKash:'01XXXXXXXXX',
+    Nagad:'01XXXXXXXXX',
+    Rocket:'01XXXXXXXXX'
+  };
+  if(num) num.textContent=numbers[method] || '01XXXXXXXXX';
+}
+function submitDemoDeposit(){
+  const amount=Number(document.getElementById('depositAmount').value);
+  const tx=document.getElementById('depositTx').value.trim();
+  const msg=document.getElementById('depositMsg');
+  if(amount<100||amount>20000){msg.textContent='Demo amount must be between ৳100 and ৳20,000.';return}
+  if(!tx){msg.textContent='Please enter a demo transaction ID.';return}
+  // Simulation only: do not connect to a real payment service.
+  balance += amount;
+  updateBalance();
+  msg.textContent=`Demo deposit ৳${fmt(amount)} submitted via ${demoDepositMethod}. Balance updated locally.`;
+  document.getElementById('depositTx').value='';
+}
+</script>
+
+
+<script>
+let addAccountMethod='bKash';
+let savedWithdrawalAccounts=JSON.parse(localStorage.getItem('aviator_demo_withdraw_accounts')||'[]');
+let selectedWithdrawalAccountId=localStorage.getItem('aviator_demo_selected_account')||'';
+
+function setAddAccountMethod(method){
+  addAccountMethod=method;
+  ['B','N','R'].forEach(x=>{
+    const el=document.getElementById('addMethod'+x);
+    if(el) el.classList.remove('active');
+  });
+  const map={bKash:'B',Nagad:'N',Rocket:'R'};
+  const el=document.getElementById('addMethod'+map[method]);
+  if(el) el.classList.add('active');
+}
+
+function saveWithdrawalAccounts(){
+  localStorage.setItem('aviator_demo_withdraw_accounts',JSON.stringify(savedWithdrawalAccounts));
+  localStorage.setItem('aviator_demo_selected_account',selectedWithdrawalAccountId||'');
+}
+
+function renderWithdrawalAccounts(){
+  const list=document.getElementById('savedAccountsList');
+  const count=document.getElementById('accountCount');
+  const selectedText=document.getElementById('selectedAccountText');
+  if(!list) return;
+
+  if(count) count.textContent=`(${savedWithdrawalAccounts.length}/5)`;
+
+  if(!savedWithdrawalAccounts.length){
+    list.innerHTML='<div class="limit-note" style="text-align:center;padding:6px">কোনো demo account এখনো যোগ করা হয়নি।</div>';
+    if(selectedText) selectedText.textContent='No saved account selected';
+    return;
+  }
+
+  let selected=savedWithdrawalAccounts.find(x=>x.id===selectedWithdrawalAccountId);
+  if(!selected){
+    selected=savedWithdrawalAccounts[0];
+    selectedWithdrawalAccountId=selected.id;
+    saveWithdrawalAccounts();
+  }
+
+  if(selectedText){
+    selectedText.textContent=`${selected.method} • ${selected.number}${selected.name?' • '+selected.name:''}`;
+  }
+
+  list.innerHTML=savedWithdrawalAccounts.map(x=>`
+    <div class="saved-account ${x.id===selectedWithdrawalAccountId?'selected':''}">
+      <div class="saved-account-info">
+        <div class="saved-account-title">${x.method} • ${x.number}</div>
+        <div class="saved-account-meta">${x.name || 'Demo account'} ${x.id===selectedWithdrawalAccountId?'• SELECTED':''}</div>
+      </div>
+      <div class="saved-account-actions">
+        <button class="account-select" onclick="selectWithdrawalAccount('${x.id}')">${x.id===selectedWithdrawalAccountId?'Selected':'Use'}</button>
+        <button class="account-delete" onclick="deleteWithdrawalAccount('${x.id}')">Delete</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function addWithdrawalAccount(){
+  const number=document.getElementById('newAccountNumber').value.trim();
+  const name=document.getElementById('newAccountName').value.trim();
+  const msg=document.getElementById('accountMsg');
+
+  if(savedWithdrawalAccounts.length>=5){
+    msg.textContent='সর্বোচ্চ ৫টি demo account যোগ করা যাবে।';
+    return;
+  }
+  if(!number){
+    msg.textContent='একটি demo account number দিন।';
+    return;
+  }
+  if(number.length<6){
+    msg.textContent='Account number সঠিকভাবে দিন।';
+    return;
+  }
+  if(savedWithdrawalAccounts.some(x=>x.number===number)){
+    msg.textContent='এই account number ইতিমধ্যে যোগ করা আছে।';
+    return;
+  }
+
+  const account={
+    id:'acc_'+Date.now()+'_'+Math.random().toString(36).slice(2,8),
+    method:addAccountMethod,
+    number,
+    name
+  };
+  savedWithdrawalAccounts.push(account);
+  selectedWithdrawalAccountId=account.id;
+  saveWithdrawalAccounts();
+  renderWithdrawalAccounts();
+
+  document.getElementById('newAccountNumber').value='';
+  document.getElementById('newAccountName').value='';
+  msg.textContent=`${addAccountMethod} demo account যোগ হয়েছে।`;
+}
+
+function selectWithdrawalAccount(id){
+  const account=savedWithdrawalAccounts.find(x=>x.id===id);
+  if(!account)return;
+  selectedWithdrawalAccountId=id;
+  saveWithdrawalAccounts();
+  renderWithdrawalAccounts();
+}
+
+function deleteWithdrawalAccount(id){
+  savedWithdrawalAccounts=savedWithdrawalAccounts.filter(x=>x.id!==id);
+  if(selectedWithdrawalAccountId===id){
+    selectedWithdrawalAccountId=savedWithdrawalAccounts[0]?.id||'';
+  }
+  saveWithdrawalAccounts();
+  renderWithdrawalAccounts();
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  setAddAccountMethod('bKash');
+  renderWithdrawalAccounts();
+});
+</script>
+
+<script>
+let demoWithdrawMethod='bKash';
+let demoWithdrawRequests=JSON.parse(localStorage.getItem('aviator_demo_withdraws')||'[]');
+
+function selectWithdrawMethod(method){
+  demoWithdrawMethod=method;
+  const el=document.getElementById('withdrawMethod');
+  if(el) el.textContent='Method: '+method;
+}
+
+function cleanWithdrawRequests(){
+  const now=Date.now();
+  demoWithdrawRequests=demoWithdrawRequests.filter(x=>now-x.createdAt<24*60*60*1000);
+  localStorage.setItem('aviator_demo_withdraws',JSON.stringify(demoWithdrawRequests));
+}
+
+function submitDemoWithdraw(){
+  cleanWithdrawRequests();
+  const amount=Number(document.getElementById('withdrawAmount').value);
+  const password=document.getElementById('withdrawPassword').value;
+  const msg=document.getElementById('withdrawMsg');
+  const selected=savedWithdrawalAccounts.find(x=>x.id===selectedWithdrawalAccountId);
+
+  if(amount<200||amount>50000){msg.textContent='Demo amount must be between ৳200 and ৳50,000.';return}
+  if(!selected){msg.textContent='প্রথমে Withdraw-এর মধ্যে একটি bKash/Nagad/Rocket demo account যোগ করে Select করুন।';return}
+  if(typeof transactionPassword==='undefined' || !transactionPassword){
+    msg.textContent='প্রথমে Settings থেকে Transaction Password সেট করুন।';
+    return
+  }
+  if(password!==transactionPassword){msg.textContent='Transaction Password সঠিক নয়।';return}
+  if(amount>balance){msg.textContent='পর্যাপ্ত demo balance নেই।';return}
+  if(demoWithdrawRequests.length>=50){
+    msg.textContent='গত ২৪ ঘণ্টায় সর্বোচ্চ ৫০টি demo request হয়ে গেছে।';
+    return
+  }
+
+  balance-=amount;
+  updateBalance();
+  demoWithdrawRequests.push({
+    method:selected.method,amount,number:selected.number,accountName:selected.name||'',
+    createdAt:Date.now(),status:'Pending'
+  });
+  localStorage.setItem('aviator_demo_withdraws',JSON.stringify(demoWithdrawRequests));
+
+  msg.textContent=`৳${fmt(amount)} ${selected.method} withdraw request submitted. Status: Pending — demo processing window 24 hours.`;
+  document.getElementById('withdrawPassword').value='';
+}
+</script>
+
+<script>
+(function () {
+  const demo = { amount: 0, active: false, cashed: false };
+
+  function money(n) {
+    return "৳" + Math.round(n).toLocaleString("en-US");
+  }
+
+  function currentX() {
+    const n = Number(window.multiplier);
+    return Number.isFinite(n) && n >= 1 ? n : 1;
+  }
+
+  function render() {
+    const amount = demo.amount;
+    const x = currentX();
+    const status = document.getElementById("yourBetStatus");
+    const amountEl = document.getElementById("yourBetAmount");
+    const xEl = document.getElementById("yourBetMultiplier");
+    const valueEl = document.getElementById("yourCashValue");
+    const btn = document.getElementById("yourLiveCashBtn");
+
+    if (!status || !amountEl || !xEl || !valueEl || !btn) return;
+
+    amountEl.textContent = money(amount);
+    xEl.textContent = x.toFixed(2) + "×";
+    valueEl.textContent = money(amount * x);
+    status.textContent = demo.cashed ? "CASHED OUT" : (demo.active ? "ACTIVE" : "WAITING");
+    btn.disabled = !(demo.active && !demo.cashed);
+  }
+
+  window.cashOutLiveDemo = function () {
+    if (!demo.active || demo.cashed) return;
+    demo.cashed = true;
+    const x = currentX();
+    const value = demo.amount * x;
+    const result = document.getElementById("yourBetResult");
+    if (result) {
+      result.textContent = "Demo cash-out: " + money(value) + " @ " + x.toFixed(2) + "×";
+      result.style.color = "#20d98a";
+    }
+    render();
+  };
+
+  document.addEventListener("DOMContentLoaded", function () {
+    const amountInput = document.getElementById("bet1");
+
+    if (amountInput) {
+      amountInput.addEventListener("input", function () {
+        demo.amount = Number(amountInput.value) || 0;
+        demo.active = false;
+        demo.cashed = false;
+        render();
+      });
+    }
+
+    // Demo-only activation: when the existing Place Bet control is clicked,
+    // mirror the entered amount into the live display.
+    document.addEventListener("click", function (e) {
+      const text = (e.target && e.target.textContent || "").trim().toUpperCase();
+      if (text === "PLACE BET" && amountInput) {
+        demo.amount = Number(amountInput.value) || 0;
+        demo.active = demo.amount > 0;
+        demo.cashed = false;
+        const result = document.getElementById("yourBetResult");
+        if (result) result.textContent = "Cash-out value updates with the demo multiplier.";
+        render();
+      }
+    });
+
+    setInterval(render, 100);
+    render();
+  });
+})();
+</script>
+
+
+<script>
+(function(){
+  const AVIATOR_MAX_MULTIPLIER = 2000;
+
+  function capMultiplier(){
+    if (typeof window.multiplier === "number" && window.multiplier > AVIATOR_MAX_MULTIPLIER) {
+      window.multiplier = AVIATOR_MAX_MULTIPLIER;
+    }
+  }
+document.addEventListener("DOMContentLoaded", function(){
+    capMultiplier();
+    updateCornerUsers();
+    setInterval(capMultiplier, 50);
+    
+  });
+})();
+</script>
+
+
+<script>
+(function(){
+  function message(t){
+    const el=document.getElementById("profileDemoMessage");
+    if(el) el.textContent=t;
+  }
+  window.openProfileDepositDemo=function(){
+    message("Deposit — Demo selected. Entering real payment details is not supported in this demo.");
+  };
+  window.openProfileWithdrawDemo=function(){
+    message("Withdraw — Demo selected. Real-money withdrawal is not processed in this demo.");
+  };
+  window.openProfileSettingsDemo=function(){
+    message("Settings selected. Account/security settings belong to Profile only.");
+  };
+})();
+</script>
+
+
+<script>
+window.showProfileBox=function(type){
+  const box=document.getElementById("profileActionBox");
+  if(!box)return;
+  if(type==="deposit"){
+    box.innerHTML='<div class="card"><strong>📥 Deposit — Demo</strong><p style="font-size:12px;color:#9da7b6">Demo deposit screen. No real-money payment is processed.</p></div>';
+  }else if(type==="withdraw"){
+    box.innerHTML='<div class="card"><strong>📤 Withdraw — Demo</strong><p style="font-size:12px;color:#9da7b6">Demo withdrawal screen. No real-money withdrawal is processed.</p></div>';
+  }else{
+    box.innerHTML='<div class="card"><strong>⚙️ Settings</strong><p style="font-size:12px;color:#9da7b6">Profile account/security settings.</p></div>';
+  }
+};
+</script>
+
+<script>
+(function(){
+ const KEY="aviator_demo_nickname";
+ function loadNickname(){
+   const n=localStorage.getItem(KEY)||"";
+   const v=document.getElementById("profileNickname"),i=document.getElementById("nicknameInput");
+   if(v)v.textContent=n||"Not set"; if(i)i.value=n;
+ }
+ window.toggleNicknameForm=function(){
+   const f=document.getElementById("nicknameForm"),m=document.getElementById("nicknameMsg");
+   if(!f)return; f.classList.toggle("show"); if(m)m.textContent="";
+   if(f.classList.contains("show"))document.getElementById("nicknameInput").focus();
+ };
+ window.saveNickname=function(){
+   const i=document.getElementById("nicknameInput"),m=document.getElementById("nicknameMsg");
+   const n=i.value.trim();
+   if(!n){m.textContent="একটি Nickname লিখুন।";return}
+   if(n.length<2){m.textContent="Nickname কমপক্ষে ২ অক্ষরের হতে হবে।";return}
+   localStorage.setItem(KEY,n);document.getElementById("profileNickname").textContent=n;
+   m.textContent="Nickname successfully saved ✓";
+   setTimeout(()=>document.getElementById("nicknameForm").classList.remove("show"),700);
+ };
+ document.addEventListener("DOMContentLoaded",loadNickname);
+})();
+</script>
+
+</body>
+</html>
